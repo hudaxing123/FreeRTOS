@@ -74,7 +74,7 @@ void Recive_AT(void);
 void Clean_Buffer(void);
 int Send_ATE_Commd(void);
 int Send_ATI_Commd(void);
-int Send_AT(char *cmd,char *result, uint16_t waittime);
+//int Send_AT(char *cmd,char *result, uint16_t waittime);
 int ATE(void);
 void Network(void);
 void ATE1(void);

@@ -90,7 +90,7 @@ void Power_ON(void)
 
 
 
-int AT_Callback (char *AtReturn)
+int AT_Callback (char *AtReturn, char *p)
 {
 	char AT_result = 0;
 //	BaseType_t Recive_status;
@@ -106,6 +106,10 @@ int AT_Callback (char *AtReturn)
 				if(strstr((char *)Recive_Buffer,(char *)AtReturn))
 					{		
 						printf("AT Recive is :%s\r\n",(char *)Recive_Buffer);
+						if(strstr((strtok((char *)Recive_Buffer, "\r\n")),(char *)p))
+						{
+							printf("AT 指令返回结果：%s\r\n",(strtok((char *)Recive_Buffer, "\r\n")));
+						}
 				//		HAL_UART_Transmit(&huart1,Recive_Buffer, rx_len,1025);//接收数据打印出来
 						printf("AT commd return Success!\r\n");
 						AT_result = 1;
@@ -133,7 +137,7 @@ int AT_Callback (char *AtReturn)
 
 
 //Return 0 is Scusfull, Return 1 is Failed!
-int Send_AT(char *cmd, char *result, uint16_t waittime)
+int Send_AT(char *cmd, char *result, char * atreturn, uint16_t waittime)
 {
 	int res = 0;
 	HAL_UART_Transmit(&huart2,(uint8_t*)cmd,strlen(cmd),0xFFFF);
@@ -148,8 +152,8 @@ int Send_AT(char *cmd, char *result, uint16_t waittime)
 		{
 			printf("Waitting AT Return ………!\r\n");
 //			printf("Waitting times is :%d\r\n",waittime);				
-			vTaskDelay(10);
-			if(AT_Callback (result))break;
+			vTaskDelay(300);
+			if(AT_Callback (result,atreturn))break;
 			if(waittime==1)
 			{
 				printf("Waitting AT Return Timeout!\r\n");		
@@ -174,7 +178,7 @@ void ATE1(void)
 //	uint8_t ATE2_OK = 12;
 	uint8_t ATE1OK = ATE1_OK;
 
-	if(!(Send_AT("ATE1", "OK",30)))
+	if(!(Send_AT("ATE1", "ATE1","OK",1)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -202,7 +206,7 @@ void ATE1(void)
 void ATI(void)
 {
 	uint8_t ATIOK = ATI_OK;
-	if(!(Send_AT("ATI", "ATI", 30)))
+	if(!(Send_AT("ATI", "ATI","Quectel", 1)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -230,7 +234,7 @@ void ATI(void)
 void AT_CMEE(void)
 {
 	uint8_t CMEEOK = AT_CMEE_OK;
-	if(!(Send_AT("AT+CMEE=1","OK", 30)))
+	if(!(Send_AT("AT+CMEE=1","AT+CMEE=1","OK", 1)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -259,7 +263,7 @@ void AT_CIMI(void)
 {
 	uint8_t CIMIOK = AT_CIMI_OK;
 	uint8_t CIMIFail = AT_CIMI_Fail;
-	if(!(Send_AT("AT+CIMI", "AT+CIMI",30)))
+	if(!(Send_AT("AT+CIMI", "AT+CIMI","4600",1)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -277,7 +281,7 @@ void AT_CIMI(void)
 		}
 	}
 	}
-	else if(!(Send_AT("AT+CIMI","+CME", 30)))
+	else if(!(Send_AT("AT+CIMI","AT+CIMI","+CME", 1)))
 	{
 	if( AT_Result_Queue != 0 )
 	{

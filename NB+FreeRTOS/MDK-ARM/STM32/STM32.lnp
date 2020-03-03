@@ -36,6 +36,6 @@
 "stm32\heap_4.o"
 "stm32\port.o"
 --library_type=microlib --strict --scatter "STM32\STM32.sct"
---summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "STM32.map" -o STM32\STM32.axf
