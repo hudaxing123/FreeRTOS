@@ -90,29 +90,44 @@ void Power_ON(void)
 
 
 
-int AT_Callback (char *AtReturn, char *p)
+int AT_Callback (char *AtReturn, char *Result)
 {
 	char AT_result = 0;
+//	char *p;
 //	BaseType_t Recive_status;
+		uint8_t AT[15];
+		uint8_t i = 0;
+		uint8_t t = 0;
 	BaseType_t TaskWoken = pdFALSE;
 	if(AT_Recive_Queue != NULL)
 		{
-			printf("AT_Recive_Queue已用长度：%d\r\n",(int)uxQueueMessagesWaiting(AT_Recive_Queue));
+	//		printf("AT_Recive_Queue已用长度：%d\r\n",(int)uxQueueMessagesWaiting(AT_Recive_Queue));
 			if(xQueueReceiveFromISR(AT_Recive_Queue, Recive_Buffer,&TaskWoken) == pdTRUE)
 			{
-				printf("AT_Recive_Queue用了长度：%d\r\n",(int)uxQueueMessagesWaiting(AT_Recive_Queue));
-				printf("接收的数据是: %s\r\n",Recive_Buffer);
+//				printf("AT_Recive_Queue用了长度：%d\r\n",(int)uxQueueMessagesWaiting(AT_Recive_Queue));
+//				printf("接收的数据是: %s\r\n",Recive_Buffer);
 				//对接收到的数据进行处理，处理完将结果发送到队列并通知任务3
 				if(strstr((char *)Recive_Buffer,(char *)AtReturn))
 					{		
-						printf("AT Recive is :%s\r\n",(char *)Recive_Buffer);
-						if(strstr((strtok((char *)Recive_Buffer, "\r\n")),(char *)p))
+						while(!((Recive_Buffer[i]=='\r')&&(Recive_Buffer[i+1]=='\n')))   //查找换行符
 						{
-							printf("AT 指令返回结果：%s\r\n",(strtok((char *)Recive_Buffer, "\r\n")));
+							i++;	
 						}
+//						printf("AT Recive len is :%d\r\n",i);
+//						printf("AT Recive is :%s\r\n",(char *)Recive_Buffer);
+						for(t=0;t<15;t++)
+							{
+								AT[t]=Recive_Buffer[i+2];
+								i++;
+							}
+//							printf("AT1 指令返回结果：%s\r\n",(char *)AT);
+							if(strstr((char *)AT,(char *)Result))
+							{
+//							printf("AT1 指令返回结果返回成功\r\n");
+								printf("AT commd return Success!\r\n");
+								AT_result = 1;
+							}
 				//		HAL_UART_Transmit(&huart1,Recive_Buffer, rx_len,1025);//接收数据打印出来
-						printf("AT commd return Success!\r\n");
-						AT_result = 1;
 					}
 				else
 					{
@@ -137,30 +152,29 @@ int AT_Callback (char *AtReturn, char *p)
 
 
 //Return 0 is Scusfull, Return 1 is Failed!
-int Send_AT(char *cmd, char *result, char * atreturn, uint16_t waittime)
+int Send_AT(char *cmd, char *Atreturn, char *result, uint16_t waittime)
 {
 	int res = 0;
 	HAL_UART_Transmit(&huart2,(uint8_t*)cmd,strlen(cmd),0xFFFF);
 	HAL_UART_Transmit(&huart2,(uint8_t*)"\r",1,100);
 	HAL_UART_Transmit(&huart2,(uint8_t*)"\n",1,100);
 	printf("Send AT is %s!\r\n",cmd);
-	memset(Recive_Buffer,0,BUFFER_SIZE);    //清除缓存区	
 	
 	if(result && waittime)
 	{	
 		while(--waittime)
 		{
-			printf("Waitting AT Return ………!\r\n");
+//			printf("Waitting AT Return ………!\r\n");
 //			printf("Waitting times is :%d\r\n",waittime);				
-			vTaskDelay(300);
-			if(AT_Callback (result,atreturn))break;
+			vTaskDelay(10);
+			if(AT_Callback (Atreturn,result))break;
 			if(waittime==1)
 			{
 				printf("Waitting AT Return Timeout!\r\n");		
 				res = 1;
 			}
 		}
-			
+		memset(Recive_Buffer,0,BUFFER_SIZE);    //清除缓存区		
 	}	
 	else
 	{
@@ -178,7 +192,7 @@ void ATE1(void)
 //	uint8_t ATE2_OK = 12;
 	uint8_t ATE1OK = ATE1_OK;
 
-	if(!(Send_AT("ATE1", "ATE1","OK",1)))
+	if(!(Send_AT("ATE1","ATE1","OK",30)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -206,7 +220,7 @@ void ATE1(void)
 void ATI(void)
 {
 	uint8_t ATIOK = ATI_OK;
-	if(!(Send_AT("ATI", "ATI","Quectel", 1)))
+	if(!(Send_AT("ATI", "ATI","Quectel", 30)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -234,7 +248,7 @@ void ATI(void)
 void AT_CMEE(void)
 {
 	uint8_t CMEEOK = AT_CMEE_OK;
-	if(!(Send_AT("AT+CMEE=1","AT+CMEE=1","OK", 1)))
+	if(!(Send_AT("AT+CMEE=1","AT+CMEE=1","OK",30)))
 	{
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
@@ -263,16 +277,17 @@ void AT_CIMI(void)
 {
 	uint8_t CIMIOK = AT_CIMI_OK;
 	uint8_t CIMIFail = AT_CIMI_Fail;
-	if(!(Send_AT("AT+CIMI", "AT+CIMI","4600",1)))
+	if(!(Send_AT("AT+CIMI", "AT+CIMI","4600",30)))
 	{
+		printf("AT+CIMI do finsh!\r\n");
 		//往结果队列中传入成功
 	if( AT_Result_Queue != 0 )
 	{
 		// Send an uint32_t.  Wait for 10 ticks for space to become
 		// available if necessary.
-		if( xQueueSend( AT_Result_Queue, (void *)&CIMIOK, ( TickType_t ) 10 ) == pdPASS )
+		if( xQueueSend( AT_Result_Queue, (void *)&CIMIOK,0) == pdPASS )
 		{
-			printf("AT+CMEE=1 Return OK and Success Send to queue………!\r\n");
+			printf("AT+CIMI Return OK and Success Send to queue………!\r\n");
 	//		printf("AT_Result_Queue 已用长度：%d\r\n",(int)uxQueueMessagesWaiting( AT_Result_Queue));
 		}
 		else
@@ -281,15 +296,16 @@ void AT_CIMI(void)
 		}
 	}
 	}
-	else if(!(Send_AT("AT+CIMI","AT+CIMI","+CME", 1)))
+	else if(!(Send_AT("AT+CIMI","AT+CIMI","+CME ERROR:", 30)))
 	{
+		printf("AT+CIMI do1 finsh!\r\n");
 	if( AT_Result_Queue != 0 )
 	{
 		// Send an uint32_t.  Wait for 10 ticks for space to become
 		// available if necessary.
-		if( xQueueSend( AT_Result_Queue, (void *)&CIMIFail, ( TickType_t ) 10 ) == pdPASS )
+		if( xQueueSend( AT_Result_Queue, (void *)&CIMIFail,0) == pdPASS )
 		{
-			printf("AT+CMEE=1 Return Fail and Success Send to queue………!\r\n");
+			printf("AT+CIMI Return Fail and Success Send to queue………!\r\n");
 	//		printf("AT_Result_Queue 已用长度：%d\r\n",(int)uxQueueMessagesWaiting( AT_Result_Queue));
 		}
 		else
@@ -299,10 +315,11 @@ void AT_CIMI(void)
 	}
 		
 	}
-	else
-	{
-		//往结果队列中传入失败
-	}
+//	else
+//	{
+//		//往结果队列中传入失败
+//		printf("AT_Result_Queue is Full!\r\n");
+//	}
 }
 //void CFUN(void)
 //{
@@ -330,13 +347,8 @@ void Network(void)
 	{
 		if( xQueueReceive( AT_Result_Queue, (void *)&Return_Status,0)== pdTRUE )
 		{
-			// pcRxedMessage now points to the struct AMessage variable posted
-			// by vATask.
-//			Return_Status = (char *)AT_Return_Queue;
-//			printf("AT Recive is :%s\r\n",(char *)Recive_Buffer);
-//			printf("AT Result Status is :%s\r\n",&Return_Status);
 			printf("AT Result Status is :%d\r\n",Return_Status);
-			printf("AT_Result_Queue已用长度：%d\r\n",(int)uxQueueMessagesWaiting( AT_Result_Queue));
+	//		printf("AT_Result_Queue已用长度：%d\r\n",(int)uxQueueMessagesWaiting( AT_Result_Queue));
 //		return Return_Status;
 		}
 		else
@@ -362,7 +374,7 @@ void Network(void)
 		 case AT_CMEE_OK:
         printf("AT+CMEE=1 执行成功!\r\n");
 				AT_CIMI();
-				Return_Status = 0;
+//				Return_Status = 0;
           break;	
 		 case AT_CIMI_OK:
         printf("AT+CIMI执行成功!\r\n");

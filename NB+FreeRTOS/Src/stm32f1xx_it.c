@@ -300,7 +300,7 @@ void USART2_IRQHandler(void)
 			{
 //				printf("Send data to Queue OK!\r\n");
 //			printf("AT_Recive_Queue中断已用长度：%d\r\n",(int)uxQueueMessagesWaiting(AT_Recive_Queue));
-				printf("Send data to Queue is :%s\r\n",(char *)rx_buffer);
+				printf("%s\r\n",(char *)rx_buffer);
 //				printf("Send data is %s\r\n",rx_buffer);	
 			}
 			else
